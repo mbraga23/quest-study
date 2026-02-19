@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚔️ Quest Study — Sistema de Missões</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#0a0a1a;--card:#12122a;--border:#2a2a4a;--text:#e0e0f0;--dim:#8888aa;
+      --blue:#00d4ff;--green:#00ff88;--purple:#aa44ff;--orange:#ff8800;--red:#ff3366;--gold:#ffd700;--cyan:#00f5ff;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh}
+    .app{min-height:100vh;background:radial-gradient(ellipse at 20% 50%,rgba(0,212,255,.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,rgba(170,68,255,.03) 0%,transparent 50%),var(--bg)}
+    
+    /* Auth */
+    .auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .auth-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;max-width:420px;width:100%;text-align:center}
+    .auth-logo{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+    .auth-sub{color:var(--dim);font-size:.85rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:32px}
+    .auth-input{width:100%;padding:14px 18px;background:rgba(10,10,26,.8);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1rem;margin-bottom:12px;outline:none;transition:border .3s}
+    .auth-input:focus{border-color:var(--blue)}
+    .auth-input::placeholder{color:var(--dim)}
+    .auth-btn{width:100%;padding:14px;background:linear-gradient(135deg,rgba(0,212,255,.2),rgba(170,68,255,.2));border:1px solid var(--blue);border-radius:10px;color:var(--blue);font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .3s;letter-spacing:2px;margin-top:8px}
+    .auth-btn:hover{background:linear-gradient(135deg,rgba(0,212,255,.3),rgba(170,68,255,.3));box-shadow:0 0 20px rgba(0,212,255,.2)}
+    .auth-btn.secondary{border-color:var(--green);color:var(--green);margin-top:12px}
+    .auth-btn.secondary:hover{box-shadow:0 0 20px rgba(0,255,136,.2)}
+    .auth-error{color:var(--red);font-size:.85rem;margin-top:8px;min-height:20px}
+    .auth-divider{color:var(--dim);font-size:.8rem;margin:20px 0;display:flex;align-items:center;gap:12px}
+    .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* Header */
+    .header{padding:16px 24px;border-bottom:1px solid var(--border);background:rgba(18,18,42,.8);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100}
+    .header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .logo{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px}
+    .logo-sub{font-size:.65rem;color:var(--dim);letter-spacing:4px;text-transform:uppercase}
+    .header-right{display:flex;align-items:center;gap:12px}
+    .user-badge{font-size:.85rem;color:var(--dim);display:flex;align-items:center;gap:6px}
+    .user-badge strong{color:var(--green)}
+    .btn-sm{padding:6px 14px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid}
+    .btn-logout{background:rgba(255,51,102,.1);border-color:rgba(255,51,102,.3);color:var(--red)}
+    .btn-logout:hover{background:rgba(255,51,102,.2)}
+
+    /* Nav */
+    .nav-tabs{display:flex;gap:4px;background:rgba(10,10,26,.6);padding:4px;border-radius:12px;border:1px solid var(--border)}
+    .nav-tab{padding:8px 18px;border:none;background:transparent;color:var(--dim);font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;border-radius:8px;transition:all .2s;letter-spacing:1px}
+    .nav-tab:hover{color:var(--text);background:rgba(255,255,255,.05)}
+    .nav-tab.active{background:linear-gradient(135deg,rgba(0,212,255,.2),rgba(170,68,255,.2));color:var(--blue);box-shadow:0 0 15px rgba(0,212,255,.1)}
+
+    /* Main */
+    .main{max-width:1200px;margin:0 auto;padding:24px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;transition:border-color .3s}
+    .card:hover{border-color:rgba(0,212,255,.3)}
+    .card-title{font-family:'Orbitron',monospace;font-size:.8rem;color:var(--blue);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+    /* Stats */
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+    .stat-card{background:linear-gradient(135deg,rgba(0,212,255,.05),rgba(170,68,255,.05));border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+    .stat-value{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;background:linear-gradient(135deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-label{font-size:.7rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+    .streak-fire{font-size:1.3rem;display:inline-block;animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+
+    /* XP Bar */
+    .xp-bar-outer{width:100%;height:20px;background:rgba(10,10,26,.8);border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative}
+    .xp-bar-inner{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+    .xp-bar-inner::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 2s infinite}
+    @keyframes shimmer{100%{left:100%}}
+    .xp-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:1}
+
+    /* Tasks */
+    .tasks-section{margin-bottom:12px}
+    .tasks-section-title{font-family:'Orbitron',monospace;font-size:.7rem;color:var(--purple);letter-spacing:2px;text-transform:uppercase;margin:16px 0 8px;padding-left:4px}
+    .tasks-grid{display:flex;flex-direction:column;gap:6px}
+    .task-item{display:flex;align-items:center;gap:12px;padding:11px 16px;background:rgba(10,10,26,.4);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;user-select:none}
+    .task-item:hover{background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.3);transform:translateX(4px)}
+    .task-item.checked{background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.3)}
+    .task-checkbox{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;transition:all .3s;flex-shrink:0;font-size:.9rem;color:var(--green)}
+    .task-item.checked .task-checkbox{border-color:var(--green);background:rgba(0,255,136,.2);box-shadow:0 0 10px rgba(0,255,136,.2)}
+    .task-icon{font-size:1.2rem}
+    .task-label{flex:1;font-size:.95rem;font-weight:500}
+    .task-time{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--cyan);background:rgba(0,245,255,.08);padding:2px 8px;border-radius:6px;white-space:nowrap;border:1px solid rgba(0,245,255,.15)}
+    .task-points{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--gold);font-weight:700}
+
+    /* Date Nav */
+    .date-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
+    .date-btn{background:rgba(0,212,255,.1);border:1px solid var(--border);color:var(--blue);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+    .date-btn:hover{background:rgba(0,212,255,.2)}
+    .date-btn:disabled{opacity:.3;cursor:not-allowed}
+    .date-display{font-family:'Orbitron',monospace;font-size:.95rem;min-width:220px;text-align:center}
+    .date-today{font-size:.65rem;color:var(--green);letter-spacing:2px}
+
+    /* Achievements */
+    .achievements-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+    .achievement{background:rgba(10,10,26,.4);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;transition:all .3s}
+    .achievement.unlocked{border-color:var(--gold);box-shadow:0 0 20px rgba(255,215,0,.1)}
+    .achievement.locked{opacity:.4;filter:grayscale(1)}
+    .achievement-icon{font-size:1.8rem;margin-bottom:6px;display:block}
+    .achievement-name{font-family:'Orbitron',monospace;font-size:.6rem;font-weight:700;color:var(--gold);letter-spacing:1px}
+    .achievement-desc{font-size:.7rem;color:var(--dim);margin-top:3px}
+
+    /* Tables */
+    .w-table{width:100%;border-collapse:separate;border-spacing:0 4px}
+    .w-table th{font-family:'Orbitron',monospace;font-size:.6rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;padding:6px 10px;text-align:left}
+    .w-table td{padding:8px 10px;background:rgba(10,10,26,.4);font-size:.85rem}
+    .w-table tr td:first-child{border-radius:8px 0 0 8px}
+    .w-table tr td:last-child{border-radius:0 8px 8px 0}
+    .tier-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:16px;font-family:'Orbitron',monospace;font-size:.65rem;font-weight:700;letter-spacing:1px;border:1px solid}
+    .reward-total{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;text-align:center;padding:20px;background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,136,0,.1));border:1px solid rgba(255,215,0,.3);border-radius:16px;margin-top:12px}
+
+    /* Calendar */
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:12px}
+    .cal-header{text-align:center;font-size:.6rem;color:var(--dim);letter-spacing:1px;font-family:'Orbitron',monospace;padding:4px}
+    .cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;border:1px solid transparent;cursor:default}
+    .cal-day.has-data{cursor:pointer}
+    .cal-day.today{border-color:var(--blue)}
+    .month-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px}
+    .month-label{font-family:'Orbitron',monospace;font-size:.85rem;min-width:180px;text-align:center}
+
+    /* Editor */
+    .editor-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+    .editor-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(10,10,26,.4);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;flex-wrap:wrap}
+    .editor-row input,.editor-row select{background:rgba(10,10,26,.8);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-family:'Rajdhani',sans-serif;font-size:.9rem;outline:none}
+    .editor-row input:focus,.editor-row select:focus{border-color:var(--blue)}
+    .editor-row input[type="number"]{width:60px}
+    .editor-row input[type="text"]{flex:1;min-width:120px}
+    .editor-row .emoji-input{width:50px;text-align:center}
+    .btn-icon{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .btn-icon:hover{border-color:var(--blue);color:var(--blue)}
+    .btn-icon.danger:hover{border-color:var(--red);color:var(--red)}
+    .btn-add{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;background:rgba(0,212,255,.05);border:1px dashed var(--border);border-radius:10px;color:var(--blue);cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;transition:all .2s;margin-top:6px}
+    .btn-add:hover{background:rgba(0,212,255,.1);border-color:var(--blue)}
+
+    /* Notification */
+    .notif{position:fixed;top:80px;right:24px;padding:14px 22px;border-radius:12px;font-family:'Orbitron',monospace;font-size:.8rem;font-weight:700;z-index:200;animation:slideIn .5s,slideOut .5s 2.5s forwards;pointer-events:none;border:1px solid}
+    .notif-ach{background:rgba(255,215,0,.15);color:var(--gold);border-color:rgba(255,215,0,.4);box-shadow:0 0 30px rgba(255,215,0,.15)}
+    .notif-pts{background:rgba(0,255,136,.15);color:var(--green);border-color:rgba(0,255,136,.4)}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes slideOut{from{opacity:1}to{opacity:0;transform:translateY(-20px)}}
+
+    .loading{display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Orbitron',monospace;color:var(--blue);font-size:1.1rem}
+
+    /* Responsive */
+    @media(max-width:768px){
+      .header-inner{flex-direction:column;align-items:flex-start}
+      .stats-row{grid-template-columns:repeat(2,1fr)}
+      .achievements-grid{grid-template-columns:repeat(3,1fr)}
+      .main{padding:16px}
+      .card{padding:16px}
+      .nav-tab{padding:6px 10px;font-size:.8rem}
+      .auth-box{padding:24px}
+      .editor-row{flex-direction:column;align-items:stretch}
+      .editor-row input[type="number"]{width:100%}
+    }
+  </style>
+</head>
+<body>
+<div id="app" class="app"><div class="loading">⚔️ Carregando...</div></div>
+<script>
+// ============================================================
+// FIREBASE CONFIG
+// ============================================================
+firebase.initializeApp({
+  apiKey:"AIzaSyC7zSknEBwuX8hlDPDtEardHn_Vei6IzHc",
+  authDomain:"quest-study-c4957.firebaseapp.com",
+  projectId:"quest-study-c4957",
+  storageBucket:"quest-study-c4957.firebasestorage.app",
+  messagingSenderId:"995208749338",
+  appId:"1:995208749338:web:c1858c347eb958870d8ca3"
+});
+const auth=firebase.auth(), db=firebase.firestore();
+
+// ============================================================
+// DEFAULT TASKS
+// ============================================================
+const DEFAULT_TASKS = [
+  // Manhã
+  {id:"escola",label:"Escola",points:5,icon:"🏫",category:"manha",days:[1,2,3,4,5],time:"7:00 - 12:00"},
+  {id:"arrumar_quarto",label:"Arrumar o quarto",points:3,icon:"🛏️",category:"manha",days:[1,2,3,4,5,6,0],time:"Ao acordar"},
+  // Tarde - Estudos
+  {id:"estudo_ia_pt",label:"Estudo com IA — Português/Redação",points:10,icon:"🧠",category:"estudo",days:[1,3],time:"13:00 - 14:00"},
+  {id:"estudo_ia_mat",label:"Estudo com IA — Matemática",points:10,icon:"🧠",category:"estudo",days:[2,4],time:"13:00 - 14:00"},
+  {id:"revisao",label:"Revisão Semanal (com IA)",points:10,icon:"📝",category:"estudo",days:[5],time:"13:00 - 14:00"},
+  {id:"ingles",label:"Inglês Online",points:10,icon:"🇬🇧",category:"estudo",days:[1,3],time:"14:30 - 15:30"},
+  {id:"leitura",label:"Leitura (30min)",points:5,icon:"📖",category:"estudo",days:[2,4],time:"14:30 - 15:00"},
+  {id:"caligrafia",label:"Treino Caligrafia (30min)",points:5,icon:"✍️",category:"estudo",days:[2,4],time:"15:00 - 15:30"},
+  // Esporte
+  {id:"jiujitsu",label:"Jiu-Jitsu",points:5,icon:"🥋",category:"esporte",days:[1,3],time:"19:00 - 20:00"},
+  // Casa
+  {id:"lixo",label:"Tirar o lixo",points:3,icon:"🗑️",category:"casa",days:[1,2,3,4,5,6,0],time:"Durante o dia"},
+  {id:"caixa_areia",label:"Limpar caixa de areia",points:3,icon:"🐱",category:"casa",days:[1,2,3,4,5,6,0],time:"Durante o dia"},
+  // Disciplina
+  {id:"limite_tela",label:"Respeitou limite de tela (2h30)",points:5,icon:"📱",category:"disciplina",days:[1,2,3,4,5],time:"15:30 - 18:00"},
+  {id:"limite_tela_fds",label:"Respeitou limite de tela (3h)",points:5,icon:"📱",category:"disciplina",days:[0,6],time:"Livre"},
+  {id:"sem_tela_noite",label:"Sem tela após 21h",points:5,icon:"🚫",category:"disciplina",days:[1,2,3,4,5],time:"21:00+"},
+  {id:"dormir_22",label:"Dormiu no horário (22h)",points:5,icon:"🌙",category:"disciplina",days:[1,2,3,4,5],time:"22:00"},
+  {id:"dormir_2230",label:"Dormiu no horário (22:30)",points:3,icon:"🌙",category:"disciplina",days:[0,6],time:"22:30"},
+];
+
+const ACHIEVEMENTS=[
+  {id:"first_day",name:"Primeiro Passo",desc:"Completou o primeiro dia",icon:"🌟"},
+  {id:"streak_3",name:"Combo x3",desc:"3 dias seguidos",icon:"🔥"},
+  {id:"streak_7",name:"Semana Perfeita",desc:"7 dias seguidos",icon:"💎"},
+  {id:"streak_14",name:"Imparável",desc:"14 dias seguidos",icon:"⚡"},
+  {id:"streak_30",name:"Lendário",desc:"30 dias seguidos",icon:"👑"},
+  {id:"study_10",name:"Estudioso",desc:"10 sessões de estudo",icon:"🧠"},
+  {id:"study_30",name:"Mestre",desc:"30 sessões de estudo",icon:"🎓"},
+  {id:"english_10",name:"English Speaker",desc:"10 aulas de inglês",icon:"🇬🇧"},
+  {id:"reader_10",name:"Rato de Biblioteca",desc:"10 sessões de leitura",icon:"📚"},
+  {id:"calligraphy_10",name:"Escriba",desc:"10 treinos de caligrafia",icon:"✒️"},
+  {id:"house_20",name:"Dono de Casa",desc:"20 tarefas de casa",icon:"🏠"},
+  {id:"diamond_week",name:"Diamante Semanal",desc:"Uma semana com 95%+",icon:"💠"},
+];
+
+const DEFAULT_TIERS=[
+  {name:"Bronze",min:50,max:69,color:"#CD7F32",reward:4},
+  {name:"Prata",min:70,max:84,color:"#C0C0C0",reward:6},
+  {name:"Ouro",min:85,max:94,color:"#FFD700",reward:8},
+  {name:"Diamante",min:95,max:100,color:"#00F5FF",reward:10},
+];
+
+const CATS={manha:"🌅 Manhã",estudo:"📚 Estudos",esporte:"🥋 Esporte",casa:"🏠 Casa",disciplina:"⚡ Disciplina"};
+const DN=["DOM","SEG","TER","QUA","QUI","SEX","SAB"];
+const MN=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+// ============================================================
+// STATE
+// ============================================================
+let S={
+  mode:null, // 'filho','pai',null
+  user:null,
+  data:null,
+  tab:"missoes",
+  selDate:new Date(),
+  calMonth:new Date(),
+  loading:true,
+  notif:null,
+  editingTasks:false,
+  editingTiers:false,
+};
+
+let unsub=null;
+const DATA_DOC="quest-study-main";
+
+function getDoc(){return db.collection("app").doc(DATA_DOC)}
+
+function defaultData(){
+  return {tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)),tiers:JSON.parse(JSON.stringify(DEFAULT_TIERS)),dailyChecks:{},achievements:[],streakCurrent:0,streakBest:0,sonName:"Jogador"};
+}
+
+function listenData(){
+  if(unsub)unsub();
+  unsub=getDoc().onSnapshot(snap=>{
+    if(snap.exists){S.data=snap.data();if(!S.data.tasks)S.data.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));if(!S.data.tiers)S.data.tiers=JSON.parse(JSON.stringify(DEFAULT_TIERS))}
+    else{S.data=defaultData();saveData(S.data)}
+    S.loading=false;render()
+  })
+}
+
+async function saveData(d){try{await getDoc().set(d,{merge:true})}catch(e){console.error(e)}}
+
+// Start listening immediately
+listenData();
+
+auth.onAuthStateChanged(u=>{
+  S.user=u;
+  if(u)S.mode='pai';
+  render();
+});
+
+// ============================================================
+// UTILS
+// ============================================================
+function dk(d){const dt=new Date(d);return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`}
+function tasksFor(d,tasks){
+  const dow=new Date(d).getDay();
+  return (tasks||[]).filter(t=>!t.days||t.days.includes(dow));
+}
+function maxPts(d,tasks){return tasksFor(d,tasks).reduce((s,t)=>s+(t.points||0),0)}
+function dayPts(checks,d,tasks){
+  const ts=tasksFor(d,tasks),dc=(checks||{})[dk(d)]||{};
+  return ts.reduce((s,t)=>s+(dc[t.id]?t.points:0),0);
+}
+function getTier(pct,tiers){return(tiers||DEFAULT_TIERS).slice().reverse().find(t=>pct>=t.min)||null}
+function fmt(d){const dt=new Date(d);return`${DN[dt.getDay()]}, ${dt.getDate()} de ${MN[dt.getMonth()]}`}
+
+function countTask(checks,id){let c=0;Object.values(checks||{}).forEach(d=>{if(d[id])c++});return c}
+function countCat(checks,tasks,cat){
+  let c=0;const ids=(tasks||[]).filter(t=>t.category===cat).map(t=>t.id);
+  Object.values(checks||{}).forEach(d=>{ids.forEach(id=>{if(d[id])c++})});return c;
+}
+
+function calcStreak(checks){
+  let s=0,d=new Date();d.setHours(0,0,0,0);
+  while(true){const k=dk(d),ch=checks[k];if(!ch||!Object.values(ch).some(Boolean))break;s++;d.setDate(d.getDate()-1)}
+  return s;
+}
+
+function weeklyStats(checks,tasks,tiers){
+  const w=[],all=Object.keys(checks||{}).sort();if(!all.length)return w;
+  let c=new Date(all[0]);const dow=c.getDay();c.setDate(c.getDate()+(dow===0?-6:1-dow));
+  const today=new Date();
+  while(c<=today){
+    let wp=0,wm=0;const ws=new Date(c);
+    for(let i=0;i<7;i++){const dd=new Date(c);dd.setDate(dd.getDate()+i);if(dd>today)break;wp+=dayPts(checks,dd,tasks);wm+=maxPts(dd,tasks)}
+    if(wm>0){const pct=Math.round(wp/wm*100);w.push({start:ws,pts:wp,max:wm,pct,tier:getTier(pct,tiers)})}
+    c.setDate(c.getDate()+7);
+  }
+  return w;
+}
+
+function checkAch(data){
+  const ch=data.dailyChecks||{},ex=data.achievements||[],nw=[...ex],tasks=data.tasks||[];
+  const conds={
+    first_day:Object.keys(ch).length>=1,
+    streak_3:(data.streakCurrent||0)>=3,streak_7:(data.streakCurrent||0)>=7,
+    streak_14:(data.streakCurrent||0)>=14,streak_30:(data.streakBest||0)>=30,
+    study_10:(countTask(ch,"estudo_ia_pt")+countTask(ch,"estudo_ia_mat"))>=10,
+    study_30:(countTask(ch,"estudo_ia_pt")+countTask(ch,"estudo_ia_mat"))>=30,
+    english_10:countTask(ch,"ingles")>=10,reader_10:countTask(ch,"leitura")>=10,
+    calligraphy_10:countTask(ch,"caligrafia")>=10,
+    house_20:countCat(ch,tasks,"casa")>=20,
+    diamond_week:weeklyStats(ch,tasks,data.tiers).some(w=>w.pct>=95),
+  };
+  let unlocked=[];
+  for(const[id,met]of Object.entries(conds)){if(met&&!nw.includes(id)){nw.push(id);const a=ACHIEVEMENTS.find(x=>x.id===id);if(a)unlocked.push(a)}}
+  return{achievements:nw,unlocked};
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+async function toggleTask(taskId,points){
+  const d=S.data,k=dk(S.selDate),dc={...(d.dailyChecks?.[k]||{})};
+  const was=dc[taskId];dc[taskId]=!was;
+  const newChecks={...d.dailyChecks,[k]:dc};
+  const streak=calcStreak(newChecks),best=Math.max(d.streakBest||0,streak);
+  const nd={...d,dailyChecks:newChecks,streakCurrent:streak,streakBest:best};
+  const{achievements,unlocked}=checkAch(nd);nd.achievements=achievements;
+  await saveData(nd);
+  if(!was)showNotif(`+${points} XP`,"notif-pts");
+  if(unlocked.length)setTimeout(()=>showNotif(`🏆 ${unlocked[0].name} desbloqueado!`,"notif-ach"),500);
+}
+
+function showNotif(t,c){S.notif={t,c,k:Date.now()};render();setTimeout(()=>{S.notif=null;render()},3000)}
+
+async function addTask(){
+  const tasks=[...(S.data.tasks||[])];
+  const id="custom_"+Date.now();
+  tasks.push({id,label:"Nova tarefa",points:3,icon:"⭐",category:"casa",days:[1,2,3,4,5,6,0],time:"Durante o dia"});
+  await saveData({tasks});
+}
+
+async function removeTask(idx){
+  const tasks=[...(S.data.tasks||[])];tasks.splice(idx,1);
+  await saveData({tasks});
+}
+
+async function updateTask(idx,field,val){
+  const tasks=JSON.parse(JSON.stringify(S.data.tasks||[]));
+  if(field==="days"){
+    const d=parseInt(val);const cur=tasks[idx].days||[];
+    if(cur.includes(d))tasks[idx].days=cur.filter(x=>x!==d);
+    else tasks[idx].days=[...cur,d].sort();
+  }else if(field==="points"){
+    tasks[idx].points=parseInt(val)||0;
+  }else{
+    tasks[idx][field]=val;
+  }
+  await saveData({tasks});
+}
+
+async function updateTier(idx,field,val){
+  const tiers=JSON.parse(JSON.stringify(S.data.tiers||DEFAULT_TIERS));
+  tiers[idx][field]=field==="name"||field==="color"?val:parseInt(val)||0;
+  await saveData({tiers});
+}
+
+async function updateSonName(name){await saveData({sonName:name})}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render(){
+  const app=document.getElementById("app");
+  if(S.loading){app.innerHTML=`<div class="loading">⚔️ Carregando...</div>`;return}
+  if(!S.mode){renderChoose(app);return}
+  if(S.mode==='pai'&&!S.user){renderPaiLogin(app);return}
+  renderMain(app);
+}
+
+function renderChoose(app){
+  const name=S.data?.sonName||"Jogador";
+  app.innerHTML=`<div class="auth-screen"><div class="auth-box">
+    <div class="auth-logo">⚔️ QUEST STUDY</div>
+    <div class="auth-sub">Quem está acessando?</div>
+    <button class="auth-btn secondary" onclick="S.mode='filho';render()">🎮 ${name} (Filho)</button>
+    <div class="auth-divider">ou</div>
+    <button class="auth-btn" onclick="S.mode='pai';render()">👨‍👦 Pai (com senha)</button>
+  </div></div>`;
+}
+
+function renderPaiLogin(app){
+  app.innerHTML=`<div class="auth-screen"><div class="auth-box">
+    <div class="auth-logo">👨‍👦 PAINEL DO PAI</div>
+    <div class="auth-sub">Login necessário</div>
+    <input class="auth-input" id="a-email" placeholder="Email" type="email">
+    <input class="auth-input" id="a-pass" placeholder="Senha" type="password">
+    <button class="auth-btn" onclick="doPaiLogin()">ENTRAR</button>
+    <div class="auth-error" id="a-err"></div>
+    <div style="margin-top:16px"><button class="auth-btn secondary" onclick="S.mode=null;render()">← Voltar</button></div>
+  </div></div>`;
+}
+
+async function doPaiLogin(){
+  const e=document.getElementById("a-email").value,p=document.getElementById("a-pass").value,err=document.getElementById("a-err");
+  if(!e||!p){err.textContent="Preencha email e senha";return}
+  try{await auth.signInWithEmailAndPassword(e,p)}catch(x){
+    let m=x.message;
+    if(m.includes("invalid-credential")||m.includes("wrong-password"))m="Email ou senha incorretos";
+    else if(m.includes("user-not-found"))m="Usuário não encontrado";
+    else if(m.includes("invalid-email"))m="Email inválido";
+    err.textContent=m;
+  }
+}
+
+function renderMain(app){
+  const d=S.data,isPai=S.mode==='pai',checks=d.dailyChecks||{},tasks=d.tasks||[],tiers=d.tiers||DEFAULT_TIERS;
+  const sel=S.selDate,key=dk(sel),dc=checks[key]||{};
+  const todayTasks=tasksFor(sel,tasks);
+  const dPts=todayTasks.reduce((s,t)=>s+(dc[t.id]?t.points:0),0);
+  const dMax=todayTasks.reduce((s,t)=>s+t.points,0);
+  const dPct=dMax>0?Math.round(dPts/dMax*100):0;
+  const isToday=dk(sel)===dk(new Date()),isFuture=sel>new Date()&&!isToday;
+  let totalPts=0;Object.keys(checks).forEach(k=>{const dd=new Date(k+"T12:00:00");totalPts+=dayPts(checks,dd,tasks)});
+
+  const tier=getTier(dPct,tiers),tierName=tier?tier.name:"—",tierColor=tier?tier.color:"#666";
+  const bg=dPct>=95?"linear-gradient(90deg,#00d4ff,#00ff88,#ffd700,#00f5ff)":dPct>=85?"linear-gradient(90deg,#ffd700,#ffaa00)":dPct>=70?"linear-gradient(90deg,#c0c0c0,#e0e0e0)":dPct>=50?"linear-gradient(90deg,#cd7f32,#e8a862)":"linear-gradient(90deg,#444,#666)";
+
+  const tabs=isPai?
+    `<button class="nav-tab ${S.tab==='missoes'?'active':''}" onclick="S.tab='missoes';render()">🎯 Missões</button>
+     <button class="nav-tab ${S.tab==='conquistas'?'active':''}" onclick="S.tab='conquistas';render()">🏆 Conquistas</button>
+     <button class="nav-tab ${S.tab==='painel'?'active':''}" onclick="S.tab='painel';render()">📊 Painel</button>
+     <button class="nav-tab ${S.tab==='config'?'active':''}" onclick="S.tab='config';render()">⚙️ Config</button>`:
+    `<button class="nav-tab ${S.tab==='missoes'?'active':''}" onclick="S.tab='missoes';render()">🎯 Missões</button>
+     <button class="nav-tab ${S.tab==='conquistas'?'active':''}" onclick="S.tab='conquistas';render()">🏆 Conquistas</button>`;
+
+  const userName=isPai?"Pai":d.sonName||"Jogador";
+  const logoutBtn=isPai?`<button class="btn-sm btn-logout" onclick="auth.signOut();S.mode=null;S.tab='missoes';render()">Sair</button>`
+    :`<button class="btn-sm btn-logout" onclick="S.mode=null;S.tab='missoes';render()">Trocar</button>`;
+
+  app.innerHTML=`
+    <header class="header"><div class="header-inner">
+      <div><div class="logo">⚔️ QUEST STUDY</div><div class="logo-sub">Sistema de Missões Diárias</div></div>
+      <nav class="nav-tabs">${tabs}</nav>
+      <div class="header-right">
+        <div class="user-badge">${isPai?'👨‍👦':'🎮'} <strong>${userName}</strong></div>
+        ${logoutBtn}
+      </div>
+    </div></header>
+    <main class="main">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value">${totalPts}</div><div class="stat-label">XP Total</div></div>
+        <div class="stat-card"><div class="stat-value">${(d.streakCurrent||0)>0?'<span class="streak-fire">🔥</span> ':''}${d.streakCurrent||0}</div><div class="stat-label">Streak</div></div>
+        <div class="stat-card"><div class="stat-value">${d.streakBest||0}</div><div class="stat-label">Melhor Streak</div></div>
+        <div class="stat-card"><div class="stat-value">${(d.achievements||[]).length}</div><div class="stat-label">Conquistas</div></div>
+      </div>
+      <div id="tab-content"></div>
+    </main>
+    ${S.notif?`<div class="notif ${S.notif.c}">${S.notif.t}</div>`:''}
+  `;
+
+  const tc=document.getElementById("tab-content");
+  if(S.tab==='missoes')tc.innerHTML=renderMissoes(todayTasks,dc,dPts,dMax,dPct,tierName,tierColor,bg,isToday,isFuture,isPai);
+  else if(S.tab==='conquistas')tc.innerHTML=renderConquistas(d.achievements||[]);
+  else if(S.tab==='painel'&&isPai)tc.innerHTML=renderPainel(checks,tasks,tiers);
+  else if(S.tab==='config'&&isPai)tc.innerHTML=renderConfig(tasks,tiers,d.sonName||"Jogador");
+}
+
+function renderMissoes(tasks,dc,pts,max,pct,tierName,tierColor,bg,isToday,isFuture,isPai){
+  const grouped={};tasks.forEach(t=>{const c=t.category||'outro';if(!grouped[c])grouped[c]=[];grouped[c].push(t)});
+  
+  let taskHTML='';
+  for(const[cat,items]of Object.entries(grouped)){
+    taskHTML+=`<div class="tasks-section"><div class="tasks-section-title">${CATS[cat]||cat}</div><div class="tasks-grid">`;
+    items.forEach(t=>{
+      taskHTML+=`<div class="task-item ${dc[t.id]?'checked':''}" onclick="toggleTask('${t.id}',${t.points})">
+        <div class="task-checkbox">${dc[t.id]?'✓':''}</div>
+        <span class="task-icon">${t.icon}</span>
+        <span class="task-label">${t.label}</span>
+        ${t.time?`<span class="task-time">${t.time}</span>`:''}
+        <span class="task-points">+${t.points} XP</span>
+      </div>`;
+    });
+    taskHTML+=`</div></div>`;
+  }
+
+  return`
+    <div class="date-nav">
+      <button class="date-btn" onclick="navDate(-1)">◀</button>
+      <div class="date-display">${fmt(S.selDate)}${isToday?'<div class="date-today">HOJE</div>':''}</div>
+      <button class="date-btn" ${isToday?'disabled':''} onclick="navDate(1)">▶</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Progresso do Dia</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.85rem">${pts} / ${max} XP</span>
+        <span style="font-family:'Orbitron',monospace;font-size:.8rem;font-weight:700;color:${tierColor}">${pct}% — ${tierName}</span>
+      </div>
+      <div class="xp-bar-outer"><div class="xp-bar-inner" style="width:${pct}%;background:${bg}"></div><span class="xp-label">${pct}%</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚔️ Missões do Dia ${isPai?'<span style="font-size:.65rem;color:var(--orange)">(MODO PAI — edição ativa)</span>':''}</div>
+      ${isFuture?'<div style="text-align:center;padding:24px;color:var(--dim)">Missões futuras não podem ser marcadas 🔮</div>':taskHTML}
+    </div>`;
+}
+
+function navDate(dir){const d=new Date(S.selDate);d.setDate(d.getDate()+dir);if(d<=new Date()){S.selDate=d;render()}}
+
+function renderConquistas(unlocked){
+  return`<div class="card"><div class="card-title">🏆 Conquistas</div>
+    <div class="achievements-grid">${ACHIEVEMENTS.map(a=>`
+      <div class="achievement ${unlocked.includes(a.id)?'unlocked':'locked'}">
+        <span class="achievement-icon">${a.icon}</span>
+        <div class="achievement-name">${a.name}</div>
+        <div class="achievement-desc">${a.desc}</div>
+      </div>`).join('')}
+    </div></div>`;
+}
+
+function renderPainel(checks,tasks,tiers){
+  const weeks=weeklyStats(checks,tasks,tiers);
+  const cm=S.calMonth,y=cm.getFullYear(),m=cm.getMonth();
+  const first=new Date(y,m,1),last=new Date(y,m+1,0),pad=first.getDay();
+  let cal='';
+  for(let i=0;i<pad;i++)cal+=`<div class="cal-day" style="opacity:.1"></div>`;
+  for(let d=1;d<=last.getDate();d++){
+    const dt=new Date(y,m,d),k=dk(dt),ch=checks[k],has=ch&&Object.values(ch).some(Boolean);
+    const p=has?dayPts(checks,dt,tasks):0,mx=maxPts(dt,tasks),pct=mx>0?Math.round(p/mx*100):0;
+    const isT=dk(dt)===dk(new Date());
+    const bg=has?(pct>=95?'rgba(0,245,255,.3)':pct>=85?'rgba(255,215,0,.3)':pct>=70?'rgba(192,192,192,.3)':pct>=50?'rgba(205,127,50,.3)':'rgba(255,51,102,.2)'):'rgba(255,255,255,.03)';
+    cal+=`<div class="cal-day ${has?'has-data':''} ${isT?'today':''}" style="background:${bg};color:${has?'#fff':'var(--dim)'}" title="${has?pct+'%':''}" onclick="calClick(${y},${m},${d})">${d}</div>`;
+  }
+
+  const months={};
+  weeks.forEach(w=>{const k=`${w.start.getFullYear()}-${String(w.start.getMonth()+1).padStart(2,'0')}`;if(!months[k])months[k]={weeks:[],total:0};months[k].weeks.push(w);if(w.tier)months[k].total+=w.tier.reward});
+
+  return`
+    <div class="card"><div class="card-title">📅 Calendário</div>
+      <div class="month-nav">
+        <button class="date-btn" onclick="navMonth(-1)">◀</button>
+        <div class="month-label">${MN[m]} ${y}</div>
+        <button class="date-btn" onclick="navMonth(1)">▶</button>
+      </div>
+      <div class="cal-grid">${DN.map(d=>`<div class="cal-header">${d}</div>`).join('')}${cal}</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+        ${tiers.map(t=>`<div style="display:flex;align-items:center;gap:4px;font-size:.65rem;color:var(--dim)"><div style="width:10px;height:10px;border-radius:3px;background:${t.color};opacity:.5"></div>${t.name}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card"><div class="card-title">📊 Relatório Semanal</div>
+      ${!weeks.length?'<div style="text-align:center;padding:20px;color:var(--dim)">Nenhum dado ainda 📈</div>':`
+        <table class="w-table"><thead><tr><th>Semana</th><th>XP</th><th>%</th><th>Tier</th><th>R$</th></tr></thead><tbody>
+        ${weeks.slice(-8).reverse().map(w=>`<tr>
+          <td>${fmt(w.start)}</td>
+          <td style="font-family:'JetBrains Mono',monospace">${w.pts}/${w.max}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${w.tier?w.tier.color:'#666'}">${w.pct}%</td>
+          <td>${w.tier?`<span class="tier-badge" style="color:${w.tier.color};border-color:${w.tier.color};background:${w.tier.color}15">${w.tier.name}</span>`:'—'}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green)">${w.tier?'R$ '+w.tier.reward:'—'}</td>
+        </tr>`).join('')}</tbody></table>`}
+    </div>
+
+    <div class="card"><div class="card-title">💰 Recompensa Mensal</div>
+      ${!Object.keys(months).length?'<div style="text-align:center;padding:20px;color:var(--dim)">Dados aparecerão aqui 💸</div>':
+        Object.entries(months).sort(([a],[b])=>b.localeCompare(a)).slice(0,3).map(([k,mo])=>{
+          const[yr,mn]=k.split('-');
+          return`<div style="margin-bottom:16px">
+            <div style="font-family:'Orbitron',monospace;font-size:.8rem;color:var(--blue);margin-bottom:8px">${MN[parseInt(mn)-1]} ${yr}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+              ${mo.weeks.map((w,i)=>`<span class="tier-badge" style="color:${w.tier?w.tier.color:'#666'};border-color:${w.tier?w.tier.color:'#333'};background:${w.tier?w.tier.color+'15':'transparent'}">S${i+1}: ${w.pct}%${w.tier?' (R$'+w.tier.reward+')':''}</span>`).join('')}
+            </div>
+            <div class="reward-total" style="color:var(--gold)">Total: R$ ${mo.total.toFixed(2)}<div style="font-size:.65rem;color:var(--dim);margin-top:4px">máx: R$ ${mo.weeks.length*10}</div></div>
+          </div>`;
+        }).join('')}
+    </div>`;
+}
+
+function calClick(y,m,d){const dt=new Date(y,m,d);if(dt<=new Date()){S.selDate=dt;S.tab='missoes';render()}}
+function navMonth(dir){S.calMonth=new Date(S.calMonth.getFullYear(),S.calMonth.getMonth()+dir,1);render()}
+
+function renderConfig(tasks,tiers,sonName){
+  const dayBtns=(task,idx)=>DN.map((n,d)=>{
+    const active=(task.days||[]).includes(d);
+    return`<button style="width:32px;height:28px;border-radius:6px;border:1px solid ${active?'var(--green)':'var(--border)'};background:${active?'rgba(0,255,136,.15)':'transparent'};color:${active?'var(--green)':'var(--dim)'};cursor:pointer;font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace" onclick="updateTask(${idx},'days','${d}')">${n.slice(0,1)}</button>`;
+  }).join('');
+
+  return`
+    <div class="card">
+      <div class="card-title">👤 Nome do Filho</div>
+      <div style="display:flex;gap:8px">
+        <input class="auth-input" style="margin:0" id="son-name" value="${sonName}" placeholder="Nome do filho">
+        <button class="auth-btn" style="width:auto;padding:10px 20px;margin:0" onclick="updateSonName(document.getElementById('son-name').value)">Salvar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Gerenciar Tarefas</div>
+      ${tasks.map((t,i)=>`
+        <div class="editor-row">
+          <input class="auth-input emoji-input" style="margin:0;width:50px;text-align:center" value="${t.icon}" onchange="updateTask(${i},'icon',this.value)">
+          <input class="auth-input" style="margin:0;flex:1;min-width:120px" value="${t.label}" onchange="updateTask(${i},'label',this.value)">
+          <select class="auth-input" style="margin:0;width:100px" onchange="updateTask(${i},'category',this.value)">
+            ${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${t.category===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem;color:var(--dim)">XP:</span>
+            <input class="auth-input" type="number" style="margin:0;width:55px" value="${t.points}" onchange="updateTask(${i},'points',this.value)">
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem;color:var(--dim)">⏰</span>
+            <input class="auth-input" style="margin:0;width:110px;font-size:.8rem" value="${t.time||''}" placeholder="Horário" onchange="updateTask(${i},'time',this.value)">
+          </div>
+          <div style="display:flex;gap:3px">${dayBtns(t,i)}</div>
+          <button class="btn-icon danger" onclick="if(confirm('Remover ${t.label}?'))removeTask(${i})">✕</button>
+        </div>
+      `).join('')}
+      <div class="btn-add" onclick="addTask()">+ Adicionar Tarefa</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏅 Tiers e Recompensas</div>
+      ${tiers.map((t,i)=>`
+        <div class="editor-row">
+          <div style="width:16px;height:16px;border-radius:4px;background:${t.color};flex-shrink:0"></div>
+          <input class="auth-input" style="margin:0;width:100px" value="${t.name}" onchange="updateTier(${i},'name',this.value)">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem;color:var(--dim)">Min:</span>
+            <input class="auth-input" type="number" style="margin:0;width:55px" value="${t.min}" onchange="updateTier(${i},'min',this.value)">
+            <span style="font-size:.75rem;color:var(--dim)">%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem;color:var(--dim)">R$:</span>
+            <input class="auth-input" type="number" style="margin:0;width:55px" value="${t.reward}" onchange="updateTier(${i},'reward',this.value)">
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem;color:var(--dim)">Cor:</span>
+            <input type="color" value="${t.color}" style="width:32px;height:28px;border:none;background:transparent;cursor:pointer" onchange="updateTier(${i},'color',this.value)">
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card" style="border-color:rgba(255,51,102,.2)">
+      <div class="card-title" style="color:var(--red)">⚠️ Zona de Perigo</div>
+      <button style="background:rgba(255,51,102,.1);border:1px solid rgba(255,51,102,.3);color:var(--red);padding:10px 24px;border-radius:8px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600" onclick="if(confirm('⚠️ APAGAR TODOS OS DADOS?')){saveData(defaultData())}">🗑️ Resetar Tudo</button>
+    </div>`;
+}
+
+render();
+</script>
+</body>
+</html>
