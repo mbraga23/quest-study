@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚔️ Quest Study — Sistema de Missões</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-dark: #0a0a1a;
+      --bg-card: #12122a;
+      --bg-card-hover: #1a1a3a;
+      --border: #2a2a4a;
+      --text: #e0e0f0;
+      --text-dim: #8888aa;
+      --neon-blue: #00d4ff;
+      --neon-green: #00ff88;
+      --neon-purple: #aa44ff;
+      --neon-orange: #ff8800;
+      --neon-red: #ff3366;
+      --neon-gold: #ffd700;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+    }
+
+    .app {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.03) 0%, transparent 50%),
+                  radial-gradient(ellipse at 80% 20%, rgba(170,68,255,0.03) 0%, transparent 50%),
+                  var(--bg-dark);
+    }
+
+    /* ===== AUTH SCREEN ===== */
+    .auth-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .auth-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .auth-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(10,10,26,0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1rem;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .auth-input:focus { border-color: var(--neon-blue); }
+    .auth-input::placeholder { color: var(--text-dim); }
+
+    .auth-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(170,68,255,0.2));
+      border: 1px solid var(--neon-blue);
+      border-radius: 10px;
+      color: var(--neon-blue);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 2px;
+      margin-top: 8px;
+    }
+
+    .auth-btn:hover {
+      background: linear-gradient(135deg, rgba(0,212,255,0.3), rgba(170,68,255,0.3));
+      box-shadow: 0 0 20px rgba(0,212,255,0.2);
+    }
+
+    .auth-toggle {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-top: 16px;
+      cursor: pointer;
+    }
+
+    .auth-toggle span {
+      color: var(--neon-blue);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .auth-error {
+      color: var(--neon-red);
+      font-size: 0.85rem;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .auth-role {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .role-btn {
+      flex: 1;
+      padding: 12px;
+      background: rgba(10,10,26,0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-dim);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .role-btn.active {
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+      background: rgba(0,212,255,0.1);
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(18,18,42,0.8);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+
+    .logo-sub {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-info {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .user-info strong {
+      color: var(--neon-green);
+    }
+
+    .logout-btn {
+      padding: 6px 14px;
+      background: rgba(255,51,102,0.1);
+      border: 1px solid rgba(255,51,102,0.3);
+      border-radius: 8px;
+      color: var(--neon-red);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover { background: rgba(255,51,102,0.2); }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(10,10,26,0.6);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      padding: 8px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    .nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-tab.active {
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(170,68,255,0.2));
+      color: var(--neon-blue);
+      box-shadow: 0 0 15px rgba(0,212,255,0.1);
+    }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      transition: border-color 0.3s;
+    }
+    .card:hover { border-color: rgba(0,212,255,0.3); }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      color: var(--neon-blue);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(170,68,255,0.05));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .streak-fire {
+      font-size: 1.5rem;
+      display: inline-block;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+    .xp-bar-outer {
+      width: 100%;
+      height: 20px;
+      background: rgba(10,10,26,0.8);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .xp-bar-inner {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .xp-bar-inner::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer { 100% { left: 100%; } }
+
+    .xp-label {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      z-index: 1;
+    }
+
+    .tasks-grid { display: flex; flex-direction: column; gap: 8px; }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(10,10,26,0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .task-item:hover {
+      background: rgba(0,212,255,0.05);
+      border-color: rgba(0,212,255,0.3);
+      transform: translateX(4px);
+    }
+
+    .task-item.checked {
+      background: rgba(0,255,136,0.08);
+      border-color: rgba(0,255,136,0.3);
+    }
+
+    .task-checkbox {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
+
+    .task-item.checked .task-checkbox {
+      border-color: var(--neon-green);
+      background: rgba(0,255,136,0.2);
+      box-shadow: 0 0 10px rgba(0,255,136,0.2);
+    }
+
+    .task-icon { font-size: 1.3rem; }
+    .task-label { flex: 1; font-size: 1rem; font-weight: 500; }
+    .task-points {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--neon-gold);
+      font-weight: 700;
+    }
+
+    .date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .date-btn {
+      background: rgba(0,212,255,0.1);
+      border: 1px solid var(--border);
+      color: var(--neon-blue);
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .date-btn:hover { background: rgba(0,212,255,0.2); }
+    .date-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .date-display {
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      color: var(--text);
+      min-width: 200px;
+      text-align: center;
+    }
+
+    .date-today {
+      font-size: 0.7rem;
+      color: var(--neon-green);
+      letter-spacing: 2px;
+    }
+
+    .achievements-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .achievement {
+      background: rgba(10,10,26,0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .achievement.unlocked {
+      border-color: var(--neon-gold);
+      box-shadow: 0 0 20px rgba(255,215,0,0.1);
+    }
+
+    .achievement.locked { opacity: 0.4; filter: grayscale(1); }
+    .achievement-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+    .achievement-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--neon-gold);
+      letter-spacing: 1px;
+    }
+    .achievement-desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border: 1px solid;
+    }
+
+    .weekly-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+    }
+
+    .weekly-table th {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .weekly-table td {
+      padding: 10px 12px;
+      background: rgba(10,10,26,0.4);
+      font-size: 0.9rem;
+    }
+
+    .weekly-table tr td:first-child { border-radius: 8px 0 0 8px; }
+    .weekly-table tr td:last-child { border-radius: 0 8px 8px 0; }
+
+    .reward-total {
+      font-family: 'Orbitron', monospace;
+      font-size: 2rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,136,0,0.1));
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 16px;
+      margin-top: 16px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 12px;
+    }
+
+    .calendar-header {
+      text-align: center;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      font-family: 'Orbitron', monospace;
+      padding: 4px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: default;
+    }
+
+    .calendar-day.has-data { cursor: pointer; }
+    .calendar-day.today { border-color: var(--neon-blue); }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .month-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.9rem;
+      min-width: 180px;
+      text-align: center;
+    }
+
+    .notification {
+      position: fixed;
+      top: 80px; right: 24px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      z-index: 200;
+      animation: slideIn 0.5s, slideOut 0.5s 2.5s forwards;
+      pointer-events: none;
+      border: 1px solid;
+    }
+
+    .notification.achievement-notif {
+      background: rgba(255,215,0,0.15);
+      color: var(--neon-gold);
+      border-color: rgba(255,215,0,0.4);
+      box-shadow: 0 0 30px rgba(255,215,0,0.15);
+    }
+
+    .notification.points-notif {
+      background: rgba(0,255,136,0.15);
+      color: var(--neon-green);
+      border-color: rgba(0,255,136,0.4);
+    }
+
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-20px); } }
+
+    .loading-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Orbitron', monospace;
+      color: var(--neon-blue);
+      font-size: 1.2rem;
+    }
+
+    @media (max-width: 768px) {
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .achievements-grid { grid-template-columns: repeat(3, 1fr); }
+      .main { padding: 16px; }
+      .card { padding: 16px; }
+      .nav-tab { padding: 6px 12px; font-size: 0.8rem; }
+      .auth-box { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="loading-screen">⚔️ Carregando...</div>
+  </div>
+
+  <script>
+    // ============================================================
+    //  🔥 FIREBASE CONFIG — COLE SUAS CREDENCIAIS AQUI
+    // ============================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7zSknEBwuX8hlDPDtEardHn_Vei6IzHc",
+      authDomain: "quest-study-c4957.firebaseapp.com",
+      projectId: "quest-study-c4957",
+      storageBucket: "quest-study-c4957.firebasestorage.app",
+      messagingSenderId: "995208749338",
+      appId: "1:995208749338:web:c1858c347eb958870d8ca3"
+    };
+    // ============================================================
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ==================== CONSTANTS ====================
+    const TASKS_WEEKDAY = [
+      { id: "estudo_ia", label: "Estudo com IA (1h)", points: 10, icon: "🧠", category: "estudo" },
+      { id: "ingles", label: "Inglês Online", points: 10, icon: "🇬🇧", category: "estudo", days: [1, 3] },
+      { id: "leitura", label: "Leitura (30min)", points: 5, icon: "📖", category: "estudo", days: [2, 4] },
+      { id: "caligrafia", label: "Treino Caligrafia (30min)", points: 5, icon: "✍️", category: "estudo", days: [2, 4] },
+      { id: "limite_tela", label: "Respeitou limite de tela", points: 5, icon: "📱", category: "disciplina" },
+      { id: "dormir_horario", label: "Dormiu no horário (22h)", points: 5, icon: "🌙", category: "disciplina" },
+      { id: "jiujitsu", label: "Jiu-Jitsu", points: 5, icon: "🥋", category: "esporte", days: [1, 3] },
+    ];
+
+    const TASKS_WEEKEND = [
+      { id: "limite_tela_fds", label: "Respeitou limite de tela (3h)", points: 5, icon: "📱", category: "disciplina" },
+      { id: "dormir_horario_fds", label: "Dormiu no horário (22:30)", points: 3, icon: "🌙", category: "disciplina" },
+    ];
+
+    const ACHIEVEMENTS = [
+      { id: "first_day", name: "Primeiro Passo", desc: "Completou o primeiro dia", icon: "🌟" },
+      { id: "streak_3", name: "Combo x3", desc: "3 dias seguidos", icon: "🔥" },
+      { id: "streak_7", name: "Semana Perfeita", desc: "7 dias seguidos", icon: "💎" },
+      { id: "streak_14", name: "Imparável", desc: "14 dias seguidos", icon: "⚡" },
+      { id: "streak_30", name: "Lendário", desc: "30 dias seguidos", icon: "👑" },
+      { id: "study_10", name: "Estudioso", desc: "10 sessões de estudo com IA", icon: "🧠" },
+      { id: "study_30", name: "Mestre do Conhecimento", desc: "30 sessões de estudo", icon: "🎓" },
+      { id: "english_10", name: "English Speaker", desc: "10 aulas de inglês", icon: "🇬🇧" },
+      { id: "reader_10", name: "Rato de Biblioteca", desc: "10 sessões de leitura", icon: "📚" },
+      { id: "calligraphy_10", name: "Escriba", desc: "10 treinos de caligrafia", icon: "✒️" },
+      { id: "diamond_week", name: "Diamante Semanal", desc: "Uma semana com 95%+", icon: "💠" },
+    ];
+
+    const TIERS = [
+      { name: "Bronze", min: 50, max: 69, color: "#CD7F32", reward: "R$ 4", value: 4 },
+      { name: "Prata", min: 70, max: 84, color: "#C0C0C0", reward: "R$ 6", value: 6 },
+      { name: "Ouro", min: 85, max: 94, color: "#FFD700", reward: "R$ 8", value: 8 },
+      { name: "Diamante", min: 95, max: 100, color: "#00F5FF", reward: "R$ 10", value: 10 },
+    ];
+
+    const DAY_NAMES = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
+    const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+    // ==================== UTILITY ====================
+    function dateKey(d) {
+      const dt = new Date(d);
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    }
+
+    function getTasksForDate(d) {
+      const dow = new Date(d).getDay();
+      if (dow === 0 || dow === 6) return TASKS_WEEKEND;
+      return TASKS_WEEKDAY.filter(t => !t.days || t.days.includes(dow));
+    }
+
+    function getMaxPoints(d) {
+      return getTasksForDate(d).reduce((s, t) => s + t.points, 0);
+    }
+
+    function getDayPoints(checks, d) {
+      const tasks = getTasksForDate(d);
+      const dk = dateKey(d);
+      const dc = checks[dk] || {};
+      return tasks.reduce((s, t) => s + (dc[t.id] ? t.points : 0), 0);
+    }
+
+    function getTier(pct) {
+      return TIERS.slice().reverse().find(t => pct >= t.min) || null;
+    }
+
+    function formatDate(d) {
+      const dt = new Date(d);
+      return `${DAY_NAMES[dt.getDay()]}, ${dt.getDate()} de ${MONTH_NAMES[dt.getMonth()]}`;
+    }
+
+    function countTask(checks, taskId) {
+      let c = 0;
+      Object.values(checks).forEach(day => { if (day[taskId]) c++; });
+      return c;
+    }
+
+    function calcStreak(checks) {
+      let streak = 0;
+      let d = new Date();
+      d.setHours(0,0,0,0);
+      while (true) {
+        const k = dateKey(d);
+        const ch = checks[k];
+        if (!ch || Object.values(ch).filter(Boolean).length === 0) break;
+        streak++;
+        d.setDate(d.getDate() - 1);
+      }
+      return streak;
+    }
+
+    function getWeeklyStats(checks) {
+      const weeks = [];
+      const allDates = Object.keys(checks).sort();
+      if (!allDates.length) return weeks;
+      let cur = new Date(allDates[0]);
+      const dow = cur.getDay();
+      cur.setDate(cur.getDate() + (dow === 0 ? -6 : 1 - dow));
+      const today = new Date();
+      while (cur <= today) {
+        let wp = 0, wm = 0;
+        const ws = new Date(cur);
+        for (let i = 0; i < 7; i++) {
+          const dd = new Date(cur); dd.setDate(dd.getDate() + i);
+          if (dd > today) break;
+          wp += getDayPoints(checks, dd);
+          wm += getMaxPoints(dd);
+        }
+        if (wm > 0) {
+          const pct = Math.round((wp / wm) * 100);
+          weeks.push({ start: ws, points: wp, max: wm, pct, tier: getTier(pct) });
+        }
+        cur.setDate(cur.getDate() + 7);
+      }
+      return weeks;
+    }
+
+    function checkAchievements(data) {
+      const checks = data.dailyChecks || {};
+      const streak = data.streakCurrent || 0;
+      const best = data.streakBest || 0;
+      const existing = data.achievements || [];
+      const newA = [...existing];
+      const conditions = {
+        first_day: Object.keys(checks).length >= 1,
+        streak_3: streak >= 3,
+        streak_7: streak >= 7,
+        streak_14: streak >= 14,
+        streak_30: best >= 30,
+        study_10: countTask(checks, "estudo_ia") >= 10,
+        study_30: countTask(checks, "estudo_ia") >= 30,
+        english_10: countTask(checks, "ingles") >= 10,
+        reader_10: countTask(checks, "leitura") >= 10,
+        calligraphy_10: countTask(checks, "caligrafia") >= 10,
+        diamond_week: getWeeklyStats(checks).some(w => w.pct >= 95),
+      };
+      let newlyUnlocked = [];
+      for (const [id, met] of Object.entries(conditions)) {
+        if (met && !newA.includes(id)) {
+          newA.push(id);
+          newlyUnlocked.push(ACHIEVEMENTS.find(a => a.id === id));
+        }
+      }
+      return { achievements: newA, newlyUnlocked };
+    }
+
+    // ==================== STATE ====================
+    let state = {
+      user: null,
+      userData: null,
+      tab: "missoes",
+      selectedDate: new Date(),
+      calMonth: new Date(),
+      authMode: "login",
+      authRole: "filho",
+      loading: true,
+      notification: null,
+    };
+
+    let unsubFirestore = null;
+
+    // ==================== FIREBASE ====================
+    function getUserDoc() {
+      if (!state.user) return null;
+      return db.collection("users").doc(state.user.uid);
+    }
+
+    function defaultUserData() {
+      return { dailyChecks: {}, achievements: [], streakCurrent: 0, streakBest: 0, role: "filho", displayName: "" };
+    }
+
+    async function saveUserData(data) {
+      const doc = getUserDoc();
+      if (!doc) return;
+      try { await doc.set(data, { merge: true }); } catch (e) { console.error("Save error:", e); }
+    }
+
+    function listenToData() {
+      if (unsubFirestore) unsubFirestore();
+      const doc = getUserDoc();
+      if (!doc) return;
+      unsubFirestore = doc.onSnapshot(snap => {
+        if (snap.exists) {
+          state.userData = snap.data();
+        } else {
+          state.userData = defaultUserData();
+          saveUserData(state.userData);
+        }
+        render();
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      state.user = user;
+      state.loading = false;
+      if (user) {
+        listenToData();
+      } else {
+        if (unsubFirestore) unsubFirestore();
+        state.userData = null;
+        render();
+      }
+    });
+
+    async function doLogin(email, pass) {
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        return null;
+      } catch (e) { return e.message; }
+    }
+
+    async function doRegister(email, pass, name, role) {
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        await db.collection("users").doc(cred.user.uid).set({
+          ...defaultUserData(),
+          role,
+          displayName: name,
+        });
+        return null;
+      } catch (e) { return e.message; }
+    }
+
+    // ==================== ACTIONS ====================
+    async function toggleTask(taskId, points) {
+      const dk = dateKey(state.selectedDate);
+      const data = state.userData || defaultUserData();
+      const dayChecks = { ...(data.dailyChecks?.[dk] || {}) };
+      const wasChecked = dayChecks[taskId];
+      dayChecks[taskId] = !wasChecked;
+
+      const newChecks = { ...(data.dailyChecks || {}), [dk]: dayChecks };
+      const streak = calcStreak(newChecks);
+      const best = Math.max(data.streakBest || 0, streak);
+
+      const newData = { ...data, dailyChecks: newChecks, streakCurrent: streak, streakBest: best };
+      const { achievements, newlyUnlocked } = checkAchievements(newData);
+      newData.achievements = achievements;
+
+      await saveUserData(newData);
+
+      if (!wasChecked) showNotification(`+${points} XP`, "points-notif");
+      if (newlyUnlocked.length) {
+        setTimeout(() => showNotification(`🏆 ${newlyUnlocked[0].name} desbloqueado!`, "achievement-notif"), 500);
+      }
+    }
+
+    function showNotification(text, cls) {
+      state.notification = { text, cls, key: Date.now() };
+      render();
+      setTimeout(() => { state.notification = null; render(); }, 3000);
+    }
+
+    // ==================== RENDER ====================
+    function render() {
+      const app = document.getElementById("app");
+
+      if (state.loading) {
+        app.innerHTML = `<div class="loading-screen">⚔️ Carregando...</div>`;
+        return;
+      }
+
+      if (!state.user) {
+        renderAuth(app);
+        return;
+      }
+
+      if (!state.userData) {
+        app.innerHTML = `<div class="loading-screen">⚔️ Sincronizando dados...</div>`;
+        return;
+      }
+
+      renderApp(app);
+    }
+
+    function renderAuth(app) {
+      const isLogin = state.authMode === "login";
+      app.innerHTML = `
+        <div class="auth-screen">
+          <div class="auth-box">
+            <div class="auth-logo">⚔️ QUEST STUDY</div>
+            <div class="auth-subtitle">${isLogin ? "Entrar na Missão" : "Criar Conta"}</div>
+            ${!isLogin ? `
+              <input class="auth-input" id="auth-name" placeholder="Nome" type="text">
+              <div class="auth-role">
+                <button class="role-btn ${state.authRole==='filho'?'active':''}" onclick="state.authRole='filho';render()">🎮 Filho</button>
+                <button class="role-btn ${state.authRole==='pai'?'active':''}" onclick="state.authRole='pai';render()">👨‍👦 Pai</button>
+              </div>
+            ` : ''}
+            <input class="auth-input" id="auth-email" placeholder="Email" type="email">
+            <input class="auth-input" id="auth-pass" placeholder="Senha" type="password">
+            <button class="auth-btn" onclick="handleAuth()">${isLogin ? "ENTRAR" : "CRIAR CONTA"}</button>
+            <div class="auth-error" id="auth-error"></div>
+            <div class="auth-toggle">
+              ${isLogin ? 'Não tem conta?' : 'Já tem conta?'}
+              <span onclick="state.authMode='${isLogin?'register':'login'}';render()">
+                ${isLogin ? 'Criar conta' : 'Fazer login'}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleAuth() {
+      const email = document.getElementById("auth-email").value;
+      const pass = document.getElementById("auth-pass").value;
+      const errEl = document.getElementById("auth-error");
+
+      if (!email || !pass) { errEl.textContent = "Preencha todos os campos"; return; }
+
+      if (state.authMode === "login") {
+        const err = await doLogin(email, pass);
+        if (err) errEl.textContent = translateError(err);
+      } else {
+        const name = document.getElementById("auth-name")?.value || "";
+        if (!name) { errEl.textContent = "Preencha o nome"; return; }
+        const err = await doRegister(email, pass, name, state.authRole);
+        if (err) errEl.textContent = translateError(err);
+      }
+    }
+
+    function translateError(msg) {
+      if (msg.includes("email-already")) return "Este email já está cadastrado";
+      if (msg.includes("wrong-password") || msg.includes("invalid-credential")) return "Email ou senha incorretos";
+      if (msg.includes("user-not-found")) return "Usuário não encontrado";
+      if (msg.includes("weak-password")) return "Senha deve ter pelo menos 6 caracteres";
+      if (msg.includes("invalid-email")) return "Email inválido";
+      return msg;
+    }
+
+    function renderApp(app) {
+      const data = state.userData;
+      const checks = data.dailyChecks || {};
+      const selDate = state.selectedDate;
+      const dk = dateKey(selDate);
+      const dayChecks = checks[dk] || {};
+      const todayTasks = getTasksForDate(selDate);
+      const dayPts = todayTasks.reduce((s, t) => s + (dayChecks[t.id] ? t.points : 0), 0);
+      const dayMax = todayTasks.reduce((s, t) => s + t.points, 0);
+      const dayPct = dayMax > 0 ? Math.round((dayPts / dayMax) * 100) : 0;
+      const isToday = dateKey(selDate) === dateKey(new Date());
+      const isFuture = selDate > new Date() && !isToday;
+
+      let totalPts = 0;
+      Object.keys(checks).forEach(k => {
+        const d = new Date(k + "T12:00:00");
+        totalPts += getDayPoints(checks, d);
+      });
+
+      const tier = getTier(dayPct);
+      const tierName = tier ? tier.name : "—";
+      const tierColor = tier ? tier.color : "#666";
+
+      const barGrad = dayPct >= 95 ? "linear-gradient(90deg,#00d4ff,#00ff88,#ffd700,#00f5ff)"
+        : dayPct >= 85 ? "linear-gradient(90deg,#ffd700,#ffaa00)"
+        : dayPct >= 70 ? "linear-gradient(90deg,#c0c0c0,#e0e0e0)"
+        : dayPct >= 50 ? "linear-gradient(90deg,#cd7f32,#e8a862)"
+        : "linear-gradient(90deg,#444,#666)";
+
+      const isPai = data.role === "pai";
+      const showPai = state.tab === "pai";
+
+      app.innerHTML = `
+        <header class="header">
+          <div class="header-inner">
+            <div>
+              <div class="logo">⚔️ QUEST STUDY</div>
+              <div class="logo-sub">Sistema de Missões Diárias</div>
+            </div>
+            <nav class="nav-tabs">
+              <button class="nav-tab ${state.tab==='missoes'?'active':''}" onclick="state.tab='missoes';render()">🎯 Missões</button>
+              <button class="nav-tab ${state.tab==='conquistas'?'active':''}" onclick="state.tab='conquistas';render()">🏆 Conquistas</button>
+              ${isPai ? `<button class="nav-tab ${state.tab==='pai'?'active':''}" onclick="state.tab='pai';render()">👨‍👦 Painel do Pai</button>` : ''}
+            </nav>
+            <div class="header-right">
+              <div class="user-info">${data.role === 'pai' ? '👨‍👦' : '🎮'} <strong>${data.displayName || 'Jogador'}</strong></div>
+              <button class="logout-btn" onclick="auth.signOut()">Sair</button>
+            </div>
+          </div>
+        </header>
+        <main class="main">
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-value">${totalPts}</div>
+              <div class="stat-label">XP Total</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${(data.streakCurrent||0) > 0 ? '<span class="streak-fire">🔥</span> ' : ''}${data.streakCurrent||0}</div>
+              <div class="stat-label">Streak Atual</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${data.streakBest||0}</div>
+              <div class="stat-label">Melhor Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${(data.achievements||[]).length}</div>
+              <div class="stat-label">Conquistas</div>
+            </div>
+          </div>
+
+          ${state.tab === 'missoes' ? renderMissoes(todayTasks, dayChecks, dayPts, dayMax, dayPct, tierName, tierColor, barGrad, isToday, isFuture) : ''}
+          ${state.tab === 'conquistas' ? renderConquistas(data.achievements || []) : ''}
+          ${state.tab === 'pai' && isPai ? renderPainelPai(checks) : ''}
+        </main>
+        ${state.notification ? `<div class="notification ${state.notification.cls}">${state.notification.text}</div>` : ''}
+      `;
+    }
+
+    function renderMissoes(tasks, dayChecks, pts, max, pct, tierName, tierColor, barGrad, isToday, isFuture) {
+      return `
+        <div class="date-nav">
+          <button class="date-btn" onclick="navDate(-1)">◀</button>
+          <div class="date-display">
+            ${formatDate(state.selectedDate)}
+            ${isToday ? '<div class="date-today">HOJE</div>' : ''}
+          </div>
+          <button class="date-btn" ${isToday ? 'disabled' : ''} onclick="navDate(1)">▶</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 Progresso do Dia</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.85rem">${pts} / ${max} XP</span>
+            <span style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:700;color:${tierColor}">${pct}% — ${tierName}</span>
+          </div>
+          <div class="xp-bar-outer">
+            <div class="xp-bar-inner" style="width:${pct}%;background:${barGrad}"></div>
+            <span class="xp-label">${pct}%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚔️ Missões do Dia</div>
+          ${isFuture ? '<div style="text-align:center;padding:24px;color:var(--text-dim)">Não é possível marcar missões futuras 🔮</div>' :
+            `<div class="tasks-grid">${tasks.map(t => `
+              <div class="task-item ${dayChecks[t.id] ? 'checked' : ''}" onclick="toggleTask('${t.id}',${t.points})">
+                <div class="task-checkbox">${dayChecks[t.id] ? '✓' : ''}</div>
+                <span class="task-icon">${t.icon}</span>
+                <span class="task-label">${t.label}</span>
+                <span class="task-points">+${t.points} XP</span>
+              </div>
+            `).join('')}</div>`
+          }
+        </div>
+      `;
+    }
+
+    function navDate(dir) {
+      const d = new Date(state.selectedDate);
+      d.setDate(d.getDate() + dir);
+      if (d <= new Date()) {
+        state.selectedDate = d;
+        render();
+      }
+    }
+
+    function renderConquistas(unlocked) {
+      return `
+        <div class="card">
+          <div class="card-title">🏆 Conquistas</div>
+          <div class="achievements-grid">
+            ${ACHIEVEMENTS.map(a => `
+              <div class="achievement ${unlocked.includes(a.id) ? 'unlocked' : 'locked'}">
+                <span class="achievement-icon">${a.icon}</span>
+                <div class="achievement-name">${a.name}</div>
+                <div class="achievement-desc">${a.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPainelPai(checks) {
+      const weeks = getWeeklyStats(checks);
+      const cm = state.calMonth;
+      const y = cm.getFullYear(), m = cm.getMonth();
+      const first = new Date(y, m, 1);
+      const last = new Date(y, m+1, 0);
+      const pad = first.getDay();
+
+      let calDays = '';
+      for (let i = 0; i < pad; i++) calDays += '<div class="calendar-day" style="opacity:0.1"></div>';
+      for (let d = 1; d <= last.getDate(); d++) {
+        const dt = new Date(y, m, d);
+        const k = dateKey(dt);
+        const ch = checks[k];
+        const hasData = ch && Object.values(ch).some(Boolean);
+        const pts = hasData ? getDayPoints(checks, dt) : 0;
+        const mx = getMaxPoints(dt);
+        const pct = mx > 0 ? Math.round((pts/mx)*100) : 0;
+        const isT = dateKey(dt) === dateKey(new Date());
+        const bg = hasData ? (pct>=95?'rgba(0,245,255,0.3)':pct>=85?'rgba(255,215,0,0.3)':pct>=70?'rgba(192,192,192,0.3)':pct>=50?'rgba(205,127,50,0.3)':'rgba(255,51,102,0.2)') : 'rgba(255,255,255,0.03)';
+        const clr = hasData ? '#fff' : 'var(--text-dim)';
+        calDays += `<div class="calendar-day ${hasData?'has-data':''} ${isT?'today':''}" style="background:${bg};color:${clr}" title="${hasData?pct+'%':''}" onclick="calClick(${y},${m},${d})">${d}</div>`;
+      }
+
+      // Monthly rewards
+      const months = {};
+      weeks.forEach(w => {
+        const key = `${w.start.getFullYear()}-${String(w.start.getMonth()+1).padStart(2,'0')}`;
+        if (!months[key]) months[key] = { weeks: [], total: 0 };
+        months[key].weeks.push(w);
+        if (w.tier) months[key].total += w.tier.value;
+      });
+
+      return `
+        <div class="card">
+          <div class="card-title">📅 Calendário de Atividade</div>
+          <div class="month-nav">
+            <button class="date-btn" onclick="navMonth(-1)">◀</button>
+            <div class="month-label">${MONTH_NAMES[m]} ${y}</div>
+            <button class="date-btn" onclick="navMonth(1)">▶</button>
+          </div>
+          <div class="calendar-grid">
+            ${DAY_NAMES.map(d => `<div class="calendar-header">${d}</div>`).join('')}
+            ${calDays}
+          </div>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+            ${TIERS.map(t => `<div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--text-dim)"><div style="width:12px;height:12px;border-radius:3px;background:${t.color};opacity:0.5"></div>${t.name}</div>`).join('')}
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--text-dim)"><div style="width:12px;height:12px;border-radius:3px;background:var(--neon-red);opacity:0.4"></div>&lt; 50%</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 Relatório Semanal</div>
+          ${weeks.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--text-dim)">Nenhum dado ainda 📈</div>' : `
+            <table class="weekly-table">
+              <thead><tr><th>Semana</th><th>XP</th><th>%</th><th>Tier</th><th>Recompensa</th></tr></thead>
+              <tbody>
+                ${weeks.slice(-8).reverse().map(w => `
+                  <tr>
+                    <td>${formatDate(w.start)}</td>
+                    <td style="font-family:'JetBrains Mono',monospace">${w.points}/${w.max}</td>
+                    <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${w.tier?w.tier.color:'#666'}">${w.pct}%</td>
+                    <td>${w.tier ? `<span class="tier-badge" style="color:${w.tier.color};border-color:${w.tier.color};background:${w.tier.color}15">${w.tier.name}</span>` : '—'}</td>
+                    <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--neon-green)">${w.tier ? w.tier.reward : '—'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+
+        <div class="card">
+          <div class="card-title">💰 Recompensa Mensal</div>
+          ${Object.keys(months).length === 0 ? '<div style="text-align:center;padding:24px;color:var(--text-dim)">O resumo financeiro aparecerá aqui 💸</div>' :
+            Object.entries(months).sort(([a],[b]) => b.localeCompare(a)).slice(0,3).map(([key, mo]) => {
+              const [yr, mn] = key.split('-');
+              return `
+                <div style="margin-bottom:16px">
+                  <div style="font-family:'Orbitron',monospace;font-size:0.8rem;color:var(--neon-blue);margin-bottom:8px">${MONTH_NAMES[parseInt(mn)-1]} ${yr}</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                    ${mo.weeks.map((w,i) => `<span class="tier-badge" style="color:${w.tier?w.tier.color:'#666'};border-color:${w.tier?w.tier.color:'#333'};background:${w.tier?w.tier.color+'15':'transparent'}">Sem ${i+1}: ${w.pct}% ${w.tier?'('+w.tier.reward+')':''}</span>`).join('')}
+                  </div>
+                  <div class="reward-total" style="color:var(--neon-gold)">
+                    Total: R$ ${mo.total.toFixed(2)}
+                    <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px">máximo possível: R$ ${mo.weeks.length * 10}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          }
+        </div>
+
+        <div style="text-align:center;margin-top:20px">
+          <button style="background:rgba(255,51,102,0.1);border:1px solid rgba(255,51,102,0.3);color:var(--neon-red);padding:10px 24px;border-radius:8px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:0.85rem;font-weight:600" onclick="resetData()">🗑️ Resetar Todos os Dados</button>
+        </div>
+      `;
+    }
+
+    function calClick(y, m, d) {
+      const dt = new Date(y, m, d);
+      if (dt <= new Date()) {
+        state.selectedDate = dt;
+        state.tab = 'missoes';
+        render();
+      }
+    }
+
+    function navMonth(dir) {
+      state.calMonth = new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + dir, 1);
+      render();
+    }
+
+    function resetData() {
+      if (confirm("⚠️ Tem certeza? Isso vai apagar TODOS os dados!")) {
+        const fresh = { ...defaultUserData(), role: state.userData.role, displayName: state.userData.displayName };
+        saveUserData(fresh);
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
