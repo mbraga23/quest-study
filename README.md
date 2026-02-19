@@ -2,6 +2,8 @@
 
 Sistema gamificado de acompanhamento de rotina de estudos para adolescentes. Transforma tarefas diárias em missões com XP, streaks, conquistas desbloqueáveis e recompensas semanais.
 
+Acesse em : https://mbraga23.github.io/quest-study/
+
 ## 🎮 Funcionalidades
 
 - **Checklist diário** com tarefas que mudam automaticamente conforme o dia da semana
