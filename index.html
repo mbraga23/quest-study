@@ -214,18 +214,195 @@
     .loading{display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Orbitron',monospace;color:var(--blue);font-size:1.1rem}
 
     /* Responsive */
-    @media(max-width:768px){
-      .header-inner{flex-direction:column;align-items:flex-start}
-      .stats-row{grid-template-columns:repeat(2,1fr)}
-      .achievements-grid{grid-template-columns:repeat(3,1fr)}
-      .main{padding:16px}
-      .card{padding:16px}
-      .nav-tab{padding:6px 10px;font-size:.8rem}
-      .auth-box{padding:24px}
-      .editor-row{flex-direction:column;align-items:stretch}
-      .editor-row input[type="number"]{width:100%}
-      .attr-grid{grid-template-columns:1fr 1fr}
-      .store-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+/* =========================
+   MOBILE FIRST REAL (TOP ↓)
+========================= */
+
+/* Base ajustes mobile (até 480px) */
+@media (max-width:480px){
+
+  .main{padding:12px}
+  .card{padding:14px}
+
+  /* HEADER */
+  .header-inner{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+
+  .header-right{
+    width:100%;
+    justify-content:space-between;
+  }
+
+  /* NAV TABS (SCROLL HORIZONTAL) */
+  .nav-tabs{
+    overflow-x:auto;
+    white-space:nowrap;
+    flex-wrap:nowrap;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .nav-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .nav-tab{
+    flex:0 0 auto;
+  }
+
+  /* TASK ITEM (STACK BONITO) */
+  .task-item{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+  }
+
+  .task-item > .task-checkbox{
+    align-self:flex-start;
+  }
+
+  .task-label{
+    width:100%;
+    font-size:1rem;
+  }
+
+  .task-time,
+  .task-points,
+  .task-attr{
+    font-size:.7rem;
+  }
+
+  /* cria "linha secundária" */
+  .task-item span:not(.task-label):not(.task-icon):not(.task-checkbox){
+    margin-right:6px;
+  }
+
+  /* CALENDÁRIO */
+  .cal-grid{
+    gap:2px;
+  }
+
+  .cal-day{
+    font-size:.6rem;
+    padding:2px;
+  }
+
+  .cal-header{
+    font-size:.55rem;
+  }
+
+  /* EDITOR (TOUCH FRIENDLY) */
+  .editor-row{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+    padding:12px;
+  }
+
+  .editor-row input,
+  .editor-row select{
+    padding:10px;
+    font-size:1rem;
+  }
+
+  .btn-icon{
+    width:44px;
+    height:44px;
+  }
+
+  /* STATS */
+  .stats-row{
+    grid-template-columns:1fr 1fr;
+  }
+
+  /* ACHIEVEMENTS */
+  .achievements-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+
+/* =========================
+   TABLETS (481px → 768px)
+========================= */
+@media (max-width:768px){
+
+  .header-inner{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .header-right{
+    width:100%;
+    justify-content:space-between;
+  }
+
+  /* NAV SCROLL */
+  .nav-tabs{
+    overflow-x:auto;
+    white-space:nowrap;
+    flex-wrap:nowrap;
+  }
+
+  .nav-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .nav-tab{
+    flex:0 0 auto;
+  }
+
+  /* TASKS */
+  .task-item{
+    flex-wrap:wrap;
+    align-items:flex-start;
+  }
+
+  .task-label{
+    width:100%;
+  }
+
+  /* GRID AJUSTES */
+  .stats-row{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .attr-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .store-grid{
+    grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  }
+
+  /* CALENDÁRIO */
+  .cal-day{
+    font-size:.65rem;
+  }
+
+}
+
+
+/* =========================
+   TABLE RESPONSIVE
+========================= */
+
+/* IMPORTANTE: precisa de wrapper no HTML */
+.table-wrapper{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.table-wrapper::-webkit-scrollbar{
+  display:none;
+}
+
+.w-table{
+  min-width:600px;
+}
     }
   </style>
 </head>
@@ -968,15 +1145,15 @@ function renderPainel(checks,tasks,tiers,attributes){
     ${attrHTML}
     <div class="card"><div class="card-title">📊 Relatório Semanal</div>
       ${!weeks.length?'<div style="text-align:center;padding:20px;color:var(--dim)">Nenhum dado ainda 📈</div>':`
-        <table class="w-table"><thead><tr><th>Semana</th><th>XP</th><th>%</th><th>Tier</th><th>QC</th></tr></thead><tbody>
+        <div class="table-wrapper"><table class="w-table"><thead><tr><th>Semana</th><th>XP</th><th>%</th><th>Tier</th><th>QC</th></tr></thead><tbody>
         ${weeks.slice(-8).reverse().map(w=>`<tr>
           <td>${fmt(w.start)}</td>
           <td style="font-family:'JetBrains Mono',monospace">${w.pts}/${w.max}</td>
           <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${w.tier?w.tier.color:'#666'}">${w.pct}%</td>
           <td>${w.tier?`<span class="tier-badge" style="color:${w.tier.color};border-color:${w.tier.color};background:${w.tier.color}15">${w.tier.name}</span>`:'—'}</td>
           <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--qc)">${w.tier?'🪙 '+w.tier.reward:'—'}</td>
-        </tr>`).join('')}</tbody></table>`}
-    </div>
+        </tr>`).join('')}</tbody></table>`}</div>
+            </div>
     <div class="card"><div class="card-title">💰 Recompensa Mensal em QC</div>
       ${!Object.keys(months).length?'<div style="text-align:center;padding:20px;color:var(--dim)">Dados aparecerão aqui 🪙</div>':
         Object.entries(months).sort(([a],[b])=>b.localeCompare(a)).slice(0,3).map(([k,mo])=>{
